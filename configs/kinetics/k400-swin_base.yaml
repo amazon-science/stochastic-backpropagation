@@ -1,0 +1,108 @@
+TASK: action_recognition
+
+DDP:
+  ENABLE: True
+  NUM_SHARDS: 1
+  SHARD_ID: 0
+  MASTER_ADDR: "localhost"
+  MASTER_PORT: "12355"
+
+DATA_LOADER:
+  TRAIN_BATCH_SIZE: 32
+  TEST_BATCH_SIZE: 32
+  NUM_WORKERS: 6
+  PIN_MEMORY: True
+
+DATA:
+  NAME: kinetics
+  DIV_255: True
+  MEAN: [0.485, 0.456, 0.406]
+  STD: [0.229, 0.224, 0.225]
+  NUM_RETRIES: 10 # retry to random pick a video if the chosen video is broken
+  AUG:
+    TEMPORAL_SAMPLING:
+      {
+        "sampling_method": "random",
+        "sampling_rate": 1.0,
+      }
+    FLIP_P: 0.5 # probability to do horizontal flip
+  TRAIN:
+    LABEL_FILE: data/annotations/kinetics/k400_train.txt
+    DATA_DIR: data/kinetics400/train_256
+    NUM_CLIPS: 1
+    CLIP_SAMPLE_STRATEGY: random # random, center, uniform
+    NUM_FRAMES: 32
+    SAMPLING_RATE: 2
+    RESIZE_SCALE: [256, 320]
+    CROP_SIZE: [224, 224]
+  TEST:
+    LABEL_FILE: data/annotations/kinetics/k400_val.txt
+    DATA_DIR: data/kinetics400/val_256
+    NUM_CLIPS: 1
+    CLIP_SAMPLE_STRATEGY: center # random, center, uniform
+    NUM_FRAMES: 32
+    SAMPLING_RATE: 2
+    RESIZE_SCALE: [256]
+    CROP_SIZE: [224, 224]
+
+MODEL:
+  NAME: "swin"
+  TYPE: "c3d"
+  CRITERIONS: [["SCE", {}]]
+  PRETRAINED: ""
+  CHECKPOINT: ""
+  SWIN:
+    BACKBONE:
+      {
+        "pretrained": pretrained_models/swin/swin_base_patch4_window7_224_22k.pth,
+        "patch_size": [2, 4, 4],
+        "in_chans": 3,
+        "embed_dim": 128,
+        "drop_path_rate": 0.2,
+        "depths": [2, 2, 18, 2],
+        "num_heads": [4, 8, 16, 32],
+        "window_size": [8, 7, 7],
+        "patch_norm": True,
+        "use_checkpoint": False,
+      }
+    HEAD:
+      IN_CHANNELS: 1024
+      NUM_CLASSES: 400
+      SPATIAL_TYPE: "avg"
+      DROPOUT_RATIO: 0.5
+
+MEMSAVE:
+  ENABLE: False
+  VERSION: v1 # v1 frame-wise sampling and v2 is checkboard sampling
+  GRADDROP_CFG:
+    {
+      "gd_downsample": 1,
+      "with_gd": "eval([[1, 1], [1, 1], [1] * 14 + [0] * 4, [0, 0]])",
+    }
+
+SOLVER:
+  PHASES: ["train", "test"]
+  START_EPOCH: 1
+  NUM_EPOCHS: 30
+  OPTIMIZER: # add prefix "mmcv_" to use mmcv's optimizer builder
+    TYPE: mmcv_AdamW
+    LR: 1.5e-4
+    BETAS: (0.9, 0.999)
+    WEIGHT_DECAY: 0.05
+    PARAMWISE_CFG:
+      {
+        "custom_keys": {
+          "absolute_pos_embed": { "decay_mult": 0. },
+          "relative_position_bias_table": { "decay_mult": 0. },
+          "norm": { "decay_mult": 0. },
+          "backbone": { "lr_mult": 0.1 },
+        }
+      }
+  SCHEDULER:
+    NAME: warmup_cosine
+    WARMUP_FACTOR: 0.1
+    WARMUP_EPOCHS: 2.5
+    WARMUP_METHOD: linear
+
+SEED: 0
+OUTPUT_DIR: ./checkpoints/actrec-k400

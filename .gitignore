@@ -1,0 +1,8 @@
+*.pyc
+node_modules
+package-lock.json
+.DS_Store
+tags
+tags.lock
+tags.temp
+.vim-arsync
