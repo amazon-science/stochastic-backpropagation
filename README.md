@@ -111,6 +111,13 @@ following BibTeX entry.
     @article{cheng2022stochastic,
       title={Stochastic Backpropagation: A Memory Efficient Strategy for Training Video Models},
       author={Cheng, Feng and Xu, Mingze and Xiong, Yuanjun and Chen, Hao and Li, Xinyu and Li, Wei and Xia, Wei},
-      journal={arXiv preprint arXiv:2203.16755},
+      journal={Computer Vision and Pattern Recognition Conference (CVPR)},
+      year={2022}
+    }
+   
+    @article{fang2022depth,
+      title={An In-depth Study of Stochastic Backpropagation},
+      author={Fang, Jun and Xu, Mingze and Chen, Hao and Shuai, Bing and Tu, Zhuowen and Tighe, Joseph},
+      journal={Conference on Neural Information Processing Systems (NeurIPS)},
       year={2022}
     }
