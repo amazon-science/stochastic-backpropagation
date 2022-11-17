@@ -1,113 +1,57 @@
-# Rekognition Stochastic Backpropagation - CVPR 2022
-This repo is the official implementation of ["Stochastic Backpropagation: A Memory Efficient Strategy for Training Video Models"](https://arxiv.org/abs/2203.16755).
-It was accepted to CVPR 2022 (Oral).
+# Rekognition Stochastic Backpropagation - NeurIPS 2022
 
-Stochastic Backpropagation (SBP) is a memory saving technique for training video models. It can save up to 80% the memory with minor performance drop. It is very efficient for tasks that take hundreds of frames as input such as temporal/online action detection.
+Official PyTorch implementation for our paper at NeurIPS 2022:
+
+**An In-depth Study of Stochastic Backpropagation** [[arXiv]](https://arxiv.org/abs/2210.00129)
+
+By Jun Fang, Mingze Xu, Hao Chen, Bing Shuai, Zhuowen Tu, Joseph Tighe
+
+Stochastic Backpropagation (SBP) is a memory-efficient technique for training computer vision models. 
+It can save up to 40% of GPU memory with less than 1% accuracy degradation for training image recognition models.
+
 
 ## Installation
 
-### Requirements
-
--   linux. python \>= 3.6.
--   pytorch == 1.9.1
--   other requirements in `requirements.txt`. Install using `pip install -r requirements.txt `.
-If you occur the error that some package can not be found, you can simply install the missing pacakges using `pip`.
-
-### Add to `PYTHONPATH`:
-
-Add the `src` directory to `PYTHONPATH`.
-```
-export PYTHONPATH=`pwd`/src:$PYTHONPATH
-```
-
-## Action Recognition
-
-We validate SBP with video Swin model. The SBP implementations are inside `src/models/archs/vswin/sbp_ops.py`.
-
-### Data preparation.
-1. Download and *unzip* K400.
-    - [videos(134GB)](https://yzaws-data-log.s3.amazonaws.com/data/Kinetics/kinetics400.zip). Unzip using `unzip kinetics400.zip`.
-    - Annotations: [train](https://yzaws-data-log.s3.amazonaws.com/data/Kinetics/k400_train.txt), [val](https://yzaws-data-log.s3.amazonaws.com/data/Kinetics/k400_val.txt)
-2. link the k400 directory to `data/kinetics400` using `ln -s {k400_path} data/kinetics400`. Replace `{k400_path}` with the actual directory that stores your K400 data.
-
-### Imagenet pretrained weights
-Download Imagenet pretrained SWIN weights from [official repo](https://github.com/microsoft/Swin-Transformer) and put into `pretrained_models/swin`.
-```sh
-mkdir -p pretrained_models/swin
-cd pretrained_models/swin
-# swin_t weights
-wget https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_tiny_patch4_window7_224.pth
-# swin_b weights
-wget https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_base_patch4_window7_224_22k.pth
-cd ../..
-```
-
-### Train and test
-
-In the following example, we train video swin-tiny with SBP of `keep_ratio=0.5` (== 1 / gd_downsample). Currently only support `gd_downsample` with `2^n`, i.e. 2, 4, 8.
-The checkpoint dir will be `./checkpoints/actrec-k400/swin_t-sbp_0.5`. This setting can be trained on a machine with 4x 8GB GPUs. If you change the batch size, please linearly scale the learning rate (`SOLVER.OPTIMIZER.LR`).
+The results in the paper are produced with `Python==3.7.10 torch==1.8.1+cu111 timm==0.3.2`.
 
 ```
-# train.
-python tools/train_net.py --config_file configs/kinetics/k400-swin_tiny.yaml \
-    MEMSAVE.ENABLE True MEMSAVE.GRADDROP_CFG.gd_downsample 2 \
-    SESSION swin_t-sbp_0.5
-
-# test with 12 views.
-python tools/test_net.py --config_file configs/kinetics/k400-swin_tiny.yaml \
-    MEMSAVE.ENABLE True MEMSAVE.GRADDROP_CFG.gd_downsample 2 \
-    SESSION swin_t-sbp_0.5 \
-    MODEL.CHECKPOINT checkpoints/actrec_k400/swin_t-sbp_0.5/ckpts/epoch-30.pth
+pip install torch==1.8.0+cu111 
+pip install timm==0.3.2 tensorboardX six
 ```
 
-You can train video swin-base with config `configs/kinetics/k400-swin_base.yaml`.
+## Training
+See `run-train.sh` for training instructions.
 
-## Online Action Detection
+## Results on ImageNet
 
-We validate SBP with [LSTR](https://github.com/amazon-research/long-short-term-transformer) for online action detection.
-The key implementation of SBP for LSTR is in `src/lstr/trainer/partial_feedback.py` of function `partial_feedback_forward`.
+|    Network    | Keep-ratio | Batch size | Memory (MB / GPU) | Top-1 accuracy (%) |
+|:-------------:|:----------:|:----------:|:-----------------:|:------------------:|
+|    ViT-Tiny   |   no SBP   |     256    |        8248       |        73.68       |
+|    ViT-Tiny   |     0.5    |     256    |    5587 (0.68×)   |    73.09 (-0.59)   |
+|    ViT-Base   |   no SBP   |     64     |       10083       |        81.22       |
+|    ViT-Base   |     0.5    |     64     |    7436 (0.74×)   |    80.62 (-0.60)   |
+| ConvNeXt-Tiny |   no SBP   |     128    |       12134       |        82.1        |
+| ConvNeXt-Tiny |     0.5    |     128    |    7059 (0.58×)   |    81.61 (-0.49)   |
+| ConvNeXt-Base |   no SBP   |     64     |       14130       |        83.8        |
+| ConvNeXt-Base |     0.5    |     64     |    8758 (0.62×)   |    83.27 (-0.53)   |
 
-### Data preparation.
-Please refer to [LSTR](https://github.com/amazon-research/long-short-term-transformer).
-- For each video, extract rgb frames with 4fps and save to `{video_name}.npy` file in directory `data/THUMOS/rgb_npy`. The saved format is `THWC`.
-- Generate the `data/THUMOS/target_perframe` using the provide scripts in `tools/lstr/perframe_label_generation.py`.
 
-### Download pretrained weights
-Download pretrained weights from [mmaction2](https://github.com/open-mmlab/mmaction2/blob/master/configs/recognition/tsn/README.md) and put into `pretrained_models/mmaction2_resnet`.
 
-```sh
-mkdir -p pretrained_models/mmaction2_resnet
-cd pretrained_models/mmaction2_resnet
-wget https://download.openmmlab.com/mmaction/recognition/tsn/tsn_r50_320p_1x1x8_100e_kinetics400_rgb/tsn_r50_320p_1x1x8_100e_kinetics400_rgb_20200702-ef80e3d7.pth
-cd ../..
-```
+## Acknowledgement
+This repository is built using the [timm 0.3.2](https://github.com/rwightman/pytorch-image-models) library and the [ConvNeXt](https://github.com/facebookresearch/ConvNeXt) repository. Thanks for their great work!
 
-### Train and test
-
-```
-# train.
-python tools/lstr/train_net.py --config_file configs/thumos/sbp_e2e_lstr_128_32.yaml \
-    SESSION sbp
-
-# evaluation.
-python tools/lstr/test_net.py --config_file configs/thumos/sbp_e2e_lstr_128_32.yaml \
-    SESSION sbp \
-    MODEL.CHECKPOINT checkpoints/thumos-lstr/sbp/ckpts/epoch-25.pth
-```
-
-## Credits
-Our implementation is inspired by several open-sourced work, including:
- - [Swin-Transformer](https://github.com/microsoft/Swin-Transformer)
- - [Video-Swin-Transformer](https://github.com/SwinTransformer/Video-Swin-Transformer)
- - [LSTR](https://github.com/amazon-research/long-short-term-transformer)
-
-Thanks for their great work!
 
 ## Citation
 
-If you find this project useful for your research, please use the
-following BibTeX entry.
+If you find this project useful for your research, please cite our work by using the following BibTeX entry.
 
+    @article{fang2022depth,
+      title={An In-depth Study of Stochastic Backpropagation},
+      author={Fang, Jun and Xu, Mingze and Chen, Hao and Shuai, Bing and Tu, Zhuowen and Tighe, Joseph},
+      journal={arXiv preprint arXiv:2210.00129},
+      year={2022}
+    }
+    
     @article{cheng2022stochastic,
       title={Stochastic Backpropagation: A Memory Efficient Strategy for Training Video Models},
       author={Cheng, Feng and Xu, Mingze and Xiong, Yuanjun and Chen, Hao and Li, Xinyu and Li, Wei and Xia, Wei},
