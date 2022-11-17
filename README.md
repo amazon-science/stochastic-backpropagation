@@ -3,9 +3,9 @@
 This repo contains the official implementation of two papers:
 
 - [Stochastic Backpropagation: A Memory Efficient Strategy for Training Video Models](https://arxiv.org/abs/2203.16755),
-CVPR 2022 (Oral). The code is available at [here]().
+CVPR 2022 (Oral). The code is available at [here](https://github.com/amazon-science/stochastic-backpropagation/tree/cvpr2022).
 
-- [An In-depth Study of Stochastic Backpropagation](https://arxiv.org/abs/2210.00129), NeurIPS 2022. The code is available at [here]().
+- [An In-depth Study of Stochastic Backpropagation](https://arxiv.org/abs/2210.00129), NeurIPS 2022. The code is available at [here](https://github.com/amazon-science/stochastic-backpropagation/tree/neurips2022).
 
 ## Citation
 
